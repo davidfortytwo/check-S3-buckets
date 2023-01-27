@@ -154,7 +154,7 @@ for bucket in s3_client.list_buckets()['Buckets']:
     except:
         permission_issues.append(f'Bucket {bucket_name} does not have a lifecycle policy')        
         
-# ASVS Requirement 3.1.8: Verify that all S3 bucket encryption is enabled
+# ASVS Requirement 3.1.8-1: Verify that all S3 bucket encryption is enabled
 # Iterate through all S3 buckets and check the encryption
 for bucket in s3_client.list_buckets()['Buckets']:
     bucket_name = bucket['Name']
@@ -166,6 +166,22 @@ for bucket in s3_client.list_buckets()['Buckets']:
         if encryption_type not in ["AES256", "aws:kms"]:
             permission_issues.append(f'Bucket {bucket_name} has an unsupported encryption type: {encryption_type}')
                     
+# ASVS Requirement 3.1.8-2: Verify that all S3 bucket policies include a condition to limit access to specific HTTP referers or user agents
+for bucket in s3_client.list_buckets()['Buckets']:
+    bucket_name = bucket['Name']
+    try:
+        policy = s3_client.get_bucket_policy(Bucket=bucket_name)
+        policy_json = json.loads(policy["Policy"])
+        if "Statement" in policy_json:
+            for statement in policy_json["Statement"]:
+                if "Condition" not in statement:
+                    permission_issues.append(f'Bucket {bucket_name} does not have a condition element in its policy')
+                elif "Referer" not in statement["Condition"] and "UserAgent" not in statement["Condition"]:
+                    permission_issues.append(f'Bucket {bucket_name} does not limit access to specific HTTP referers or user agents in its condition element')
+    except:
+        permission_issues.append(f'Bucket {bucket_name} does not have a policy')
+
+                
 # ASVS Requirement 3.1.9: Verify that all S3 bucket logging is enabled
 # Iterate through all S3 buckets and check if logging is enabled
 for bucket in s3_client.list_buckets()['Buckets']:
