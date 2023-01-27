@@ -1,6 +1,10 @@
 import boto3
+import logging
 
-# Create an S3 client
+logger = logging.getLogger()
+logger.setLevel(logging.INFO)
+
+# Create an S3 client with the IAM role of the instance
 s3 = boto3.client('s3')
 
 # Get a list of all S3 buckets
@@ -11,12 +15,10 @@ buckets = [bucket['Name'] for bucket in response['Buckets']]
 with open('s3_objects.txt', 'w') as f:
     # Iterate through each bucket and list all objects
     for bucket in buckets:
-        f.write(f"Objects in bucket: {bucket}\n")
         # Use the boto3 paginator to handle pagination for the list_objects_v2 method
         paginator = s3.get_paginator('list_objects_v2')
         for result in paginator.paginate(Bucket=bucket):
             for obj in result.get('Contents', []):
                 f.write(obj['Key'] + '\n')
-        f.write('\n')
 
-print("S3 objects listed in s3_objects.txt file")
+logging.info("S3 objects listed in s3_objects.txt file")
