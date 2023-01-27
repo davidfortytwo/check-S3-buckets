@@ -16,4 +16,4 @@
 
 * You can replace us-west-2 with the appropriate region code for your S3 bucket, and my-bucket with the actual name of your S3 bucket. Also replace the proxy_ip and proxy_port with the actual values of your proxy server.
 
-* The script will check each key name in the keys.txt file, send the request for each object through the specified proxy and print the url of the object if it exists and print the error if the object doesn't exist.
+* The script will check each key name in the s3-objects.txt file, send the request for each object through the specified proxy and print the url of the object if it exists and print the error if the object doesn't exist.
