@@ -30,6 +30,12 @@ You can use find-secrets.py to search for secrets inside the AWS S3 Objects. It 
   
 It will calculate the needed space needed for downloading all objects, and prompts the user to continue the process if enough space available.
 
-# Check for permission security issues on S3 buckets.
+# Check for permission security issues on S3 buckets
 
   python check-permissions.py
+
+The following OWASP ASVS checks are performed:
+* ASVS Requirement 3.1.1: Verify that all S3 bucket policies are set to "Deny all" unless explicitly neede
+* ASVS Requirement 3.1.2: Verify that all S3 buckets have versioning enabled
+* ASVS Requirement 3.1.3: Verify that all S3 bucket ACLs are set to "private" unless explicitly needed
+
