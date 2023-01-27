@@ -1,5 +1,5 @@
-argparse
-boto3
-requests
-re
-tqdm
+argparse==1.4.0
+boto3==1.16.29
+requests==2.25.1
+re==2.2.1
+tqdm==4.54.0
