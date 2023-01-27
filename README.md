@@ -29,3 +29,7 @@ You can use find-secrets.py to search for secrets inside the AWS S3 Objects. It 
   python find-secrets.py -r regularexpression
   
 It will calculate the needed space needed for downloading all objects, and prompts the user to continue the process if enough space available.
+
+# Check for permission security issues on S3 buckets.
+
+  python check-permissions.py
