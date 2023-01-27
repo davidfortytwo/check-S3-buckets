@@ -3,3 +3,4 @@ boto3
 requests
 re
 tqdm
+cryptography
