@@ -1,5 +1,7 @@
 import boto3
 import json
+import html
+import html2text
 import pdfkit
 import argparse
 
