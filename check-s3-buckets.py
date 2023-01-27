@@ -2,11 +2,13 @@ import argparse
 import boto3
 import re
 import requests
+import string
 
 def check_bucket_objects(bucket_name, region_code, key_name, proxy=None):
-    bucket_name = re.sub('[^0-9a-zA-Z-]', '', bucket_name)
-    region_code = re.sub('[^0-9a-zA-Z-]', '', region_code)
-    key_name = re.sub('[^0-9a-zA-Z-._]', '', key_name)
+    invalid_chars = re.compile(r'[^0-9a-zA-Z-._]')
+    bucket_name = invalid_chars.sub('', bucket_name)
+    region_code = invalid_chars.sub('', region_code)
+    key_name = invalid_chars.sub('', key_name)
     s3 = boto3.client('s3', region_name=region_code)
     try:
         s3.head_object(Bucket=bucket_name, Key=key_name)
