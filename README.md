@@ -6,14 +6,14 @@
 
   pip install -r requiements.txt
 
+* Set up your AWS credentials, this can be done by creating a new IAM user with programmatic access and s3 read access and configure the credentials in your local machine by following the instructions in this link https://docs.aws.amazon.com/cli/latest/userguide/cli-configure-files.html
+
 * Create a file containing the list of key names you want to check, with one key name per line. 
 
 * You can generate a s3_objects.txt file containing list all the objects in all the S3 buckets in the account the script is being run with, by running the get-s3-objects.py script.
   
   python get-s3-objects.py
   
-* Set up your AWS credentials, this can be done by creating a new IAM user with programmatic access and s3 read access and configure the credentials in your local machine by following the instructions in this link https://docs.aws.amazon.com/cli/latest/userguide/cli-configure-files.html
-
 * Set up your proxy server, For example if you are using Burp Suite, you need to configure it to listen on the right interface, and configure the proxy settings in your script accordingly.
 
 * Run the script by providing the appropriate values for the command-line arguments.
