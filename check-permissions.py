@@ -69,7 +69,7 @@ for bucket in s3_client.list_buckets()['Buckets']:
                         permission_issues.write(f"Permission: {grant['Permission']}\n")
                         permission_issues.write("\n")
                         
-# ASVS Requirement 3.1.4: Verify that all S3 bucket policies do not allow public write access
+# ASVS Requirement 3.1.4-1: Verify that all S3 bucket policies do not allow public write access
 for bucket in s3_client.list_buckets()['Buckets']:
     bucket_name = bucket['Name']
     try:
@@ -82,6 +82,28 @@ for bucket in s3_client.list_buckets()['Buckets']:
                     permission_issues.append(f'Bucket {bucket_name} has a policy that allows public write access')
     except:
         permission_issues.append(f'Bucket {bucket_name} does not have a policy')
+        
+# ASVS Requirement 3.1.4-2: Verify that all S3 bucket policies include a condition to limit access to specific IAM users or roles
+for bucket in s3_client.list_buckets()['Buckets']:
+    bucket_name = bucket['Name']
+    try:
+        policy = s3_client.get_bucket_policy(Bucket=bucket_name)
+        policy_json = json.loads(policy["Policy"])
+        if "Statement" in policy_json:
+            for statement in policy_json["Statement"]:
+                if "Condition" in statement:
+                    if "ArnLike" in statement["Condition"] or "StringLike" in statement["Condition"]:
+                        if "aws:PrincipalArn" in statement["Condition"]["ArnLike"] or "aws:PrincipalArn" in statement["Condition"]["StringLike"]:
+                            pass
+                        else:
+                            permission_issues.append(f'Bucket {bucket_name} has a policy that does not limit access to specific IAM users or roles')
+                    else:
+                        permission_issues.append(f'Bucket {bucket_name} has a policy that does not limit access to specific IAM users or roles')
+                else:
+                    permission_issues.append(f'Bucket {bucket_name} has a policy that does not limit access to specific IAM users or roles')
+    except:
+        permission_issues.append(f'Bucket {bucket_name} does not have a policy')
+        
         
 # ASVS Requirement 3.1.5: Verify that all S3 bucket policies include a condition to limit access to specific IP ranges or VPCs
 # Iterate through all S3 buckets and check the policy
@@ -104,7 +126,7 @@ for bucket in s3_client.list_buckets()['Buckets']:
     if "MFADelete" not in mfa_delete_status or mfa_delete_status["MFADelete"] != "Enabled":
         permission_issues.append(f'Bucket {bucket_name} does not have MFA delete enabled')
         
-# ASVS Requirement 3.1.7: Verify that all S3 bucket lifecycle rules are configured to transition objects to Amazon S3 Glacier or S3 Glacier Deep Archive after a certain number of days
+# ASVS Requirement 3.1.7-1: Verify that all S3 bucket lifecycle rules are configured to transition objects to Amazon S3 Glacier or S3 Glacier Deep Archive after a certain number of days
 # Iterate through all S3 buckets and check the lifecycle configuration
 for bucket in s3_client.list_buckets()['Buckets']:
     bucket_name = bucket['Name']
@@ -121,7 +143,16 @@ for bucket in s3_client.list_buckets()['Buckets']:
                         permission_issues.append(f'Bucket {bucket_name} has a lifecycle rule with transition days less than 30, expected at least 30 days')
     except:
         permission_issues.append(f'Bucket {bucket_name} does not have a lifecycle configuration')
-        
+
+# ASVS Requirement 3.1.7-2: Verify that all S3 buckets have an S3 bucket lifecycle policy in place to automatically delete old or infrequently accessed objects
+for bucket in s3_client.list_buckets()['Buckets']:
+    bucket_name = bucket['Name']
+    try:
+        lifecycle_config = s3_client.get_bucket_lifecycle_configuration(Bucket=bucket_name)
+        if "Rules" not in lifecycle_config or len(lifecycle_config["Rules"]) == 0:
+            permission_issues.append(f'Bucket {bucket_name} does not have a lifecycle policy')
+    except:
+        permission_issues.append(f'Bucket {bucket_name} does not have a lifecycle policy')        
         
 # ASVS Requirement 3.1.8: Verify that all S3 bucket encryption is enabled
 # Iterate through all S3 buckets and check the encryption
@@ -149,3 +180,24 @@ for bucket in s3_client.list_buckets()['Buckets']:
         for grant in log_bucket_acl["Grants"]:
             if grant["Permission"] != "READ":
                 permission_issues.append(f'Bucket {log_bucket_name} has {grant["Permission"]} permission, expected "READ"')
+
+# ASVS Requirement 3.1.10: Verify that all S3 bucket access logging is enabled and that the logs are stored in a separate bucket with proper access controls
+
+for bucket in s3_client.list_buckets()['Buckets']:
+    bucket_name = bucket['Name']
+    logging_config = s3_client.get_bucket_logging(Bucket=bucket_name)
+    
+    if "LoggingEnabled" not in logging_config:
+        permission_issues.append(f'Bucket {bucket_name} does not have access logging enabled')
+    else:
+        log_bucket = logging_config["LoggingEnabled"]["TargetBucket"]
+        log_prefix = logging_config["LoggingEnabled"]["TargetPrefix"]
+        log_bucket_policy = s3_client.get_bucket_policy(Bucket=log_bucket)
+        log_bucket_policy_json = json.loads(log_bucket_policy["Policy"])
+        
+        # Check if the log bucket has proper access controls
+        if "Statement" in log_bucket_policy_json:
+            for statement in log_bucket_policy_json["Statement"]:
+                if statement["Effect"] != "Deny":
+                    permission_issues.append(f'Access logging for bucket {bucket_name} is stored in bucket {log_bucket} which does not have "Deny" policy')
+
