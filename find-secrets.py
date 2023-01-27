@@ -1,6 +1,7 @@
 import boto3
 import os
 import re
+import argparse
 import psutil
 from tqdm import tqdm
 
@@ -8,7 +9,19 @@ from tqdm import tqdm
 s3 = boto3.client('s3')
 
 # List of regular expressions to match against
-secrets = [r'password', r'secret']
+secrets = [r’(?i)password’, r’(?i)secret’, r’(?i)security’, r’(?i)api_?key’, r’(?i)access_?key’, r’(?i)secret_?key’, r’(?i)private_?key’, r’(?i)token’, r’(?i)credentials’, r’(?i)certificate’, r’(?i)ssh’]
+
+# Create an argument parser
+parser = argparse.ArgumentParser()
+
+# Add -r option to allow for manual input of regular expressions
+parser.add_argument('-r', '--regex', help='Regular expression to include in search')
+
+# Parse the arguments
+args = parser.parse_args()
+
+if args.regex:
+    secrets.append(args.regex)
 
 # Get a list of all S3 buckets
 response = s3.list_buckets()
@@ -22,14 +35,20 @@ for bucket in buckets:
         for obj in result.get('Contents', []):
             total_size += obj['Size']
 
-# Check if there is enough free space on the local disk
-free_space = psutil.disk_usage('/').free
-if total_size > free_space:
-    print(f'You need at least {total_size} bytes of free space to download all objects.')
-    print(f'You have {free_space} bytes of free space.')
-    proceed = input('Do you want to proceed? (y/n)')
-    if proceed.lower() != 'y':
-        exit()
+# Function to check if there is enough disk space for the objects
+def check_disk_space(bucket_name):
+    # Get the total size of all objects in the bucket
+    result = s3.list_objects_v2(Bucket=bucket_name)
+    total_size = sum(int(item['Size']) for item in result.get("Contents", []))
+    # Get the amount of free space on the local disk
+    free_space = psutil.disk_usage("/").free
+    # Check if there is enough free space
+    if total_size > free_space:
+        print(f"There is not enough free space on the local disk to download the objects from {bucket_name}. The total size of the objects is {total_size / (1024 ** 3):.2f} GB and the amount of free space is {free_space / (1024 ** 3):.2f} GB.")
+        proceed = input("Do you want to proceed? (y/n)")
+        if proceed.lower() != "y":
+            return False
+    return True
 
 # Iterate through each bucket
 for bucket in tqdm(buckets):
