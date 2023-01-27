@@ -59,6 +59,16 @@ if args.regex:
 response = s3.list_buckets()
 buckets = [bucket['Name'] for bucket in response['Buckets']]
 
+# Check for IAM user has access to the s3 bucket
+try:
+    for bucket in buckets:
+        s3.head_bucket(Bucket=bucket)
+except botocore.exceptions.ClientError as e:
+    if e.response['Error']['Code'] == "403":
+        print(f"Access Denied: User does not have access to {bucket}")
+        buckets.remove(bucket)
+
+
 # Get the total size of all objects in all buckets
 total_size = 0
 for bucket in buckets:
@@ -68,19 +78,23 @@ for bucket in buckets:
             total_size += obj['Size']
 
 # Function to check if there is enough disk space for the objects
-def check_disk_space(bucket_name):
-    # Get the total size of all objects in the bucket
-    result = s3.list_objects_v2(Bucket=bucket_name)
-    total_size = sum(int(item['Size']) for item in result.get("Contents", []))
-    # Get the amount of free space on the local disk
-    free_space = psutil.disk_usage("/").free
-    # Check if there is enough free space
-    if total_size > free_space:
-        print(f"There is not enough free space on the local disk to download the objects from {bucket_name}. The total size of the objects is {total_size / (1024 ** 3):.2f} GB and the amount of free space is {free_space / (1024 ** 3):.2f} GB.")
-        proceed = input("Do you want to proceed? (y/n)")
-        if proceed.lower() != "y":
-            return False
-    return True
+def check_disk_space(objects, required_space):
+    """
+    Function to check if there is enough disk space for the objects
+    """
+    disk_usage = psutil.disk_usage("/")
+    free_space = disk_usage.free
+
+    # if the amount of free space is less than the required space
+    if free_space < required_space:
+        raise ValueError("Not enough disk space. Required: {} bytes. Available: {} bytes.".format(required_space, free_space))
+    
+    # loop through the objects and check if they can fit on the disk
+    for obj in objects:
+        if obj.size > free_space:
+            raise ValueError("Object '{}' is too large to fit on the disk. Required: {} bytes. Available: {} bytes.".format(obj.name, obj.size, free_space))
+    
+    print("There is enough disk space for the objects.")
 
 # Create a secrets.txt file for storing found secrets
 with open('secrets.txt', 'w') as secrets_file:
