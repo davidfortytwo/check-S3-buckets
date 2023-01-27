@@ -40,18 +40,21 @@ if __name__ == '__main__':
     args.file_name = re.sub(r'[^0-9a-zA-Z-]', '', args.file_name)
     args.region_code = re.sub(r'[^0-9a-zA-Z-]', '', args.region_code)
     args.bucket_name = re.sub(r'[^0-9a-zA-Z-]', '', args.bucket_name)
-    if args.proxy:
-        args.proxy = re.sub(r'[^0-9a-zA-Z-]', '', args.proxy)
-    with open(args.file_name, 'r') as f:
-        key_names = f.read().splitlines()
-        for key_name in key_names:
-            if not all(x.isalnum() or x.isspace() or x in string.punctuation for x in key_name):
-                print(f'{key_name} contains invalid characters. Skipping.')
-                continue
-            if args.proxy:
-                if not all(x.isalnum() or x.isspace() or x in string.punctuation for x in args.proxy):
-                    print(f'{args.proxy} contains invalid characters. Skipping.')
-                    continue
-                check_bucket_objects(args.bucket_name, args.region_code, key_name, args.proxy)
-            else:
-                check_bucket_objects(args.bucket_name, args.region_code, key_name)
+        if args.proxy:
+            args.proxy = re.sub(r'[^0-9a-zA-Z-]', '', args.proxy)
+        try:
+            with open(args.file_name, 'r') as f:
+                key_names = f.read().splitlines()
+                for key_name in key_names:
+                    if not all(x.isalnum() or x.isspace() or x in string.punctuation for x in key_name):
+                        print(f'{key_name} contains invalid characters. Skipping.')
+                        continue
+                    if args.proxy:
+                        if not all(x.isalnum() or x.isspace() or x in string.punctuation for x in args.proxy):
+                            print(f'{args.proxy} contains invalid characters. Skipping.')
+                            continue
+                        check_bucket_objects(args.bucket_name, args.region_code, key_name, args.proxy)
+                    else:
+                        check_bucket_objects(args.bucket_name, args.region_code, key_name)
+        except FileNotFoundError:
+            print(f"The file {args.file_name} was not found.")
