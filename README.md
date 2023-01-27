@@ -12,7 +12,7 @@
 * Set up your proxy server, For example if you are using Burp Suite, you need to configure it to listen on the right interface, and configure the proxy settings in your script accordingly.
 * Run the script by providing the appropriate values for the command-line arguments.
 
-  python check-s3-buckets.py -f keys.txt -r us-west-2 -b my-bucket -p http://proxy_ip:proxy_port
+  python check-s3-buckets.py -f s3-objects.txt -r us-west-2 -b my-bucket -p http://proxy_ip:proxy_port
 
 * You can replace us-west-2 with the appropriate region code for your S3 bucket, and my-bucket with the actual name of your S3 bucket. Also replace the proxy_ip and proxy_port with the actual values of your proxy server.
 
