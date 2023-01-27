@@ -35,7 +35,7 @@ It will calculate the needed space needed for downloading all objects, and promp
   python check-permissions.py
 
 The following OWASP ASVS checks are performed:
-* ASVS Requirement 3.1.1: Verify that all S3 bucket policies are set to "Deny all" unless explicitly neede
+* ASVS Requirement 3.1.1: Verify that all S3 bucket policies are set to "Deny all" unless explicitly needed
 * ASVS Requirement 3.1.2: Verify that all S3 buckets have versioning enabled
 * ASVS Requirement 3.1.3: Verify that all S3 bucket ACLs are set to "private" unless explicitly needed
-
+More soon...
