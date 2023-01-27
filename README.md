@@ -24,4 +24,8 @@
 
 # Finding secrets in S3 objects
 
-You can use find-secrets.py to search for secrets inside the AWS S3 Objects.
+You can use find-secrets.py to search for secrets inside the AWS S3 Objects. It will search by default for some secrets, and can include regex in the search with -r option.
+
+  python find-secrets.py -r <regex>
+  
+It will calculate the needed space needed for downloading all objects, and prompts the user to continue the process if enough space available.
