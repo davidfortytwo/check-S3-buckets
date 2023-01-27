@@ -6,7 +6,7 @@ import psutil
 from tqdm import tqdm
 
 # Create an S3 client
-s3 = boto3.client('s3')
+s3 = boto3.client('s3', use_ssl=True)
 
 # List of regular expressions to match against
 secrets = [r’(?i)password’, r’(?i)secret’, r’(?i)security’, r’(?i)api_?key’, r’(?i)access_?key’, r’(?i)secret_?key’, r’(?i)private_?key’, r’(?i)token’, r’(?i)credentials’, r’(?i)certificate’, r’(?i)ssh’]
