@@ -4,3 +4,4 @@ requests==2.25.1
 re==2.2.1
 tqdm==4.54.0
 cryptography==3.3
+json==2.0.9
