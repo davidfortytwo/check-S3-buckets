@@ -26,7 +26,7 @@ args = parser.parse_args()
 if args.regex:
     secrets = [args.regex]
 else:
-    secrets = [r'password', r'secret']
+    secrets = [r’(?i)password’, r’(?i)secret’, r’(?i)security’, r’(?i)api_?key’, r’(?i)access_?key’, r’(?i)secret_?key’, r’(?i)private_?key’, r’(?i)token’, r’(?i)credentials’, r’(?i)certificate’, r’(?i)ssh’]
 
 # Add the wordlist file to the list of secrets if provided
 if args.wordlist:
