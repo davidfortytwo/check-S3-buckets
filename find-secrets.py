@@ -9,8 +9,40 @@ from tqdm import tqdm
 s3 = boto3.client('s3')
 
 # List of regular expressions to match against
-secrets = [r'(?i)password', r'(?i)secret', r'(?i)security', r'(?i)api_?key', r'(?i)access_?key', r'(?i)secret_?key', r'(?i)private_?key', r'(?i)token', r'(?i)credentials', r'(?i)certificate', r'(?i)ssh']
-
+secrets = [
+r'(?i)access_?key',
+r'(?i)access_?token',
+r'(?i)api_?key',
+r'(?i)client_?id',
+r'(?i)client_?secret',
+r'(?i)credentials',
+r'(?i)certificate',
+r'(?i)dsa',
+r'(?i)email',
+r'(?i)encryption',
+r'(?i)2fa',
+r'(?i)mfa',
+r'(?i)hashed_?password',
+r'(?i)jwt',
+r'(?i)md5',
+r'(?i)nonce',
+r'(?i)otp',
+r'(?i)pgp',
+r'(?i)password',
+r'(?i)private_?key',
+r'(?i)rsa',
+r'(?i)salt',
+r'(?i)secret',
+r'(?i)secret_?key',
+r'(?i)security',
+r'(?i)sha1',
+r'(?i)sha256',
+r'(?i)ssh',
+r'(?i)ssl',
+r'(?i)token',
+r'(?i)username',
+r'(?i)user_?name'
+]
 # Create an argument parser
 parser = argparse.ArgumentParser()
 
