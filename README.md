@@ -4,7 +4,7 @@
 
 * Install all dependencies by running this command:
 
-  pip install -r requiements.txt
+  pip install -r requirements.txt
 
 * Set up your AWS credentials, this can be done by creating a new IAM user with programmatic access and s3 read access and configure the credentials in your local machine by following the instructions in this link https://docs.aws.amazon.com/cli/latest/userguide/cli-configure-files.html
 
