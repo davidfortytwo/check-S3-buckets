@@ -273,28 +273,37 @@ def main():
     
     if args.output:
         if args.output == 'pdf':
-            pdf_file = 'permission_issues.pdf'
-            weasyprint.HTML(string=permission_issues).write_pdf(pdf_file)
+            pdf_file = os.path.join('.', 'permission_issues.pdf')
+            if os.access(pdf_file, os.W_OK):
+                weasyprint.HTML(string=permission_issues).write_pdf(pdf_file)
+            else:
+                print("Permission denied:", pdf_file)        
         elif args.output == 'txt':
-            txt_file = 'permission_issues.txt'
-            with open(txt_file, 'w') as f:
-                for item in permission_issues:
-                    f.write("%s\n" % item)
+            txt_file = os.path.join('.', 'permission_issues.txt')
+            if os.access(txt_file, os.W_OK):
+                with open(txt_file, 'w') as f:
+                    for item in permission_issues:
+                        f.write("%s\n" % item)
+            else:
+                print("Permission denied:", txt_file)            
         elif args.output == 'html':
-            html_file = 'permission_issues.html'
-            with open(html_file,'w') as f:
-                f.write('<html>')
-                f.write('<body>')
-                f.write('<table>')
-                for item in permission_issues:
-                    f.write('<tr>')
-                    f.write('<td>')
-                    f.write(item)
-                    f.write('</td>')
-                    f.write('</tr>')
-                f.write('</table>')
-                f.write('</body>')
-                f.write('</html>')    
-
+            html_file = os.path.join('.', 'permission_issues.html')
+            if os.access(html_file, os.W_OK):
+                with open(html_file,'w') as f:
+                    f.write('<html>')
+                    f.write('<body>')
+                    f.write('<table>')
+                    for item in permission_issues:
+                        f.write('<tr>')
+                        f.write('<td>')
+                        f.write(item)
+                        f.write('</td>')
+                        f.write('</tr>')
+                    f.write('</table>')
+                    f.write('</body>')
+                    f.write('</html>') 
+            else:
+                print("Permission denied:", html_file)
+                
 if __name__ == "__main__":
     main()            
