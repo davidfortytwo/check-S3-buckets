@@ -61,10 +61,3 @@ for bucket in s3_client.list_buckets()['Buckets']:
                         grantee = grant["Grantee"]["ID"]
                       else:
                         grantee = "Unknown"
-        
-                      # Check if the grantee has too permissive permissions
-                      if grant["Permission"] in TOO_PERMISSIVE_PERMISSIONS:
-                        permission_issues.write(f"Bucket: {bucket_name}\n")
-                        permission_issues.write(f"Grantee: {grantee}\n")
-                        permission_issues.write(f"Permission: {grant['Permission']}\n")
-                        permission_issues.write("\n")
