@@ -244,3 +244,34 @@ for bucket in s3_client.list_buckets()['Buckets']:
                 if statement["Effect"] != "Deny":
                     permission_issues.append(f'Access logging for bucket {bucket_name} is stored in bucket {log_bucket} which does not have "Deny" policy')
 
+# Print any issues found
+if permission_issues:
+    for issue in permission_issues:
+        print(issue)
+else:
+    print("No permission issues found.")
+    
+if args.output:
+    if args.output == 'pdf':
+        pdf_file = 'permission_issues.pdf'
+        pdfkit.from_file(permission_issues, pdf_file)
+    elif args.output == 'txt':
+        txt_file = 'permission_issues.txt'
+        with open(txt_file, 'w') as f:
+            for item in permission_issues:
+                f.write("%s\n" % item)
+    elif args.output == 'html':
+        html_file = 'permission_issues.html'
+        with open(html_file,'w') as f:
+            f.write('<html>')
+            f.write('<body>')
+            f.write('<table>')
+            for item in permission_issues:
+                f.write('<tr>')
+                f.write('<td>')
+                f.write(item)
+                f.write('</td>')
+                f.write('</tr>')
+            f.write('</table>')
+            f.write('</body>')
+            f.write('</html>')    
