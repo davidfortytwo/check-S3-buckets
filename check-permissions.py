@@ -11,7 +11,7 @@ session = boto3.Session(
     aws_secret_access_key="SECRET_KEY"
 )
 
-s3_client = session.client('s3'use_ssl=True)
+s3_client = session.client('s3',use_ssl=True)
 
 # Initialize an empty list to store any issues found
 permission_issues = []
