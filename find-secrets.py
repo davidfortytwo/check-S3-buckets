@@ -6,10 +6,10 @@ import psutil
 from tqdm import tqdm
 
 # Create an S3 client
-s3 = boto3.client('s3', use_ssl=True)
+s3 = boto3.client('s3')
 
 # List of regular expressions to match against
-secrets = [r’(?i)password’, r’(?i)secret’, r’(?i)security’, r’(?i)api_?key’, r’(?i)access_?key’, r’(?i)secret_?key’, r’(?i)private_?key’, r’(?i)token’, r’(?i)credentials’, r’(?i)certificate’, r’(?i)ssh’]
+secrets = [r'(?i)password', r'(?i)secret', r'(?i)security', r'(?i)api_?key', r'(?i)access_?key', r'(?i)secret_?key', r'(?i)private_?key', r'(?i)token', r'(?i)credentials', r'(?i)certificate', r'(?i)ssh']
 
 # Create an argument parser
 parser = argparse.ArgumentParser()
@@ -50,12 +50,14 @@ def check_disk_space(bucket_name):
             return False
     return True
 
-# Iterate through each bucket
-for bucket in tqdm(buckets):
-    # Use the boto3 paginator to handle pagination for the list_objects_v2 method
-    paginator = s3.get_paginator('list_objects_v2')
-    for result in paginator.paginate(Bucket=bucket):
-        for obj in result.get('Contents', []):
+# Create a secrets.txt file for storing found secrets
+with open('secrets.txt', 'w') as secrets_file:
+    # Iterate through each bucket
+    for bucket in tqdm(buckets):
+        # Use the boto3 paginator to handle pagination for the list_objects_v2 method
+        paginator = s3.get_paginator('list_objects_v2')
+        for result in paginator.paginate(Bucket=bucket):
+            for obj in result.get('Contents', []):
             # Download the object from S3
             s3.download_file(bucket, obj['Key'], obj['Key'])
             # Open the downloaded object
@@ -65,5 +67,7 @@ for bucket in tqdm(buckets):
                 for secret in secrets:
                     if re.search(secret, content):
                         print(f'Found {secret} in {obj["Key"]}')
+                        with open("secrets.txt", "a") as f:
+                        f.write(f'Found {secret} in {obj["Key"]}\n')
             # Remove the downloaded object after searching its content
             os.remove(obj['Key'])
