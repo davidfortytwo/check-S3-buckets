@@ -4,6 +4,10 @@ import re
 import argparse
 import psutil
 from tqdm import tqdm
+import logging
+
+logging.basicConfig(filename='secrets_scanner.log', level=logging.DEBUG)
+
 
 # Create an S3 client
 s3 = boto3.client('s3')
@@ -87,13 +91,16 @@ def check_disk_space(objects, required_space):
 
     # if the amount of free space is less than the required space
     if free_space < required_space:
+        logging.error("Not enough disk space. Required: {} bytes. Available: {} bytes.".format(required_space, free_space))
         raise ValueError("Not enough disk space. Required: {} bytes. Available: {} bytes.".format(required_space, free_space))
     
     # loop through the objects and check if they can fit on the disk
     for obj in objects:
         if obj.size > free_space:
+            logging.error("Object '{}' is too large to fit on the disk. Required: {} bytes. Available: {} bytes.".format(obj.name, obj.size, free_space))
             raise ValueError("Object '{}' is too large to fit on the disk. Required: {} bytes. Available: {} bytes.".format(obj.name, obj.size, free_space))
     
+    logging.debug("There is enough disk space for the objects.")
     print("There is enough disk space for the objects.")
 
 # Create a secrets.txt file for storing found secrets
@@ -115,5 +122,7 @@ with open('secrets.txt', 'w') as secrets_file:
                         print(f'Found {secret} in {obj["Key"]}')
                         with open("secrets.txt", "a") as f:
                         f.write(f'Found {secret} in {obj["Key"]}\n')
+                        logging.debug("Secret found")
             # Remove the downloaded object after searching its content
+            logging.debug("Removing object")
             os.remove(obj['Key'])
