@@ -4,6 +4,10 @@ import logging
 logger = logging.getLogger()
 logger.setLevel(logging.INFO)
 
+file_name = "s3_objects.txt"
+logging.basicConfig(filename="get_s3_objects.log", level=logging.INFO, format='%(asctime)s %(levelname)s %(message)s')
+
+
 # Create an S3 client with the IAM role of the instance
 s3 = boto3.client('s3')
 
@@ -14,7 +18,7 @@ buckets = [bucket['Name'] for bucket in response['Buckets']]
 logger.info("Finished listing S3 buckets")
 
 # Open a file to write the objects
-with open('s3_objects.txt', 'w') as f:
+with open(file_name, 'w') as f:
     # Iterate through each bucket and list all objects
     for bucket in buckets:
         logger.info(f"Starting to list objects in {bucket}")
@@ -24,5 +28,3 @@ with open('s3_objects.txt', 'w') as f:
             for obj in result.get('Contents', []):
                 f.write(obj['Key'] + '\n')
         logger.info(f"Finished listing objects in {bucket}")
-
-logging.info("S3 objects listed in s3_objects.txt file")
