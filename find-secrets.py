@@ -69,6 +69,7 @@ try:
         s3.head_bucket(Bucket=bucket)
 except botocore.exceptions.ClientError as e:
     if e.response['Error']['Code'] == "403":
+        logging.error(f"Access Denied: User does not have access to {bucket}")
         print(f"Access Denied: User does not have access to {bucket}")
         buckets.remove(bucket)
 
@@ -119,10 +120,11 @@ with open('secrets.txt', 'w') as secrets_file:
                 # Search for secrets in the object's content
                 for secret in secrets:
                     if re.search(secret, content):
+                        logging.info(f'Found {secret} in {obj["Key"]}')
                         print(f'Found {secret} in {obj["Key"]}')
                         with open("secrets.txt", "a") as f:
                         f.write(f'Found {secret} in {obj["Key"]}\n')
-                        logging.debug("Secret found")
+                        
             # Remove the downloaded object after searching its content
             logging.debug("Removing object")
             os.remove(obj['Key'])
