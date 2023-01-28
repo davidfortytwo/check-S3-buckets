@@ -30,7 +30,7 @@ def check_bucket_objects(bucket_name, region_code, key_name, proxy=None):
     except s3.exceptions.ClientError as e:
         error_code = int(e.response['Error']['Code'])
         if error_code == 404:
-            logging.info(f'{key_name} does not exist in bucket {bucket_name}')
+            logging.error(f'{key_name} does not exist in bucket {bucket_name}')
             print(f'{key_name} does not exist in bucket {bucket_name}')
         else:
             logging.error(e)
@@ -54,17 +54,17 @@ if __name__ == '__main__':
                 key_names = f.read().splitlines()
                 for key_name in key_names:
                     if not all(x.isalnum() or x.isspace() or x in string.punctuation for x in key_name):
-                        logging.info(f'{key_name} contains invalid characters. Skipping.')
+                        logging.error(f'{key_name} contains invalid characters. Skipping.')
                         print(f'{key_name} contains invalid characters. Skipping.')
                         continue
                     if args.proxy:
                         if not all(x.isalnum() or x.isspace() or x in string.punctuation for x in args.proxy):
-                            logging.info(f'{args.proxy} contains invalid characters. Skipping.')
+                            logging.error(f'{args.proxy} contains invalid characters. Skipping.')
                             print(f'{args.proxy} contains invalid characters. Skipping.')
                             continue
                         check_bucket_objects(args.bucket_name, args.region_code, key_name, args.proxy)
                     else:
                         check_bucket_objects(args.bucket_name, args.region_code, key_name)
         except FileNotFoundError:
-            logging.info(f"The file {args.file_name} was not found.")
+            logging.error(f"The file {args.file_name} was not found.")
             print(f"The file {args.file_name} was not found.")
