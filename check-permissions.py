@@ -4,6 +4,7 @@ import html
 import html2text
 import pdfkit
 import argparse
+import logging
 
 KNOWN_GROUP_URIS = ["http://acs.amazonaws.com/groups/global/AuthenticatedUsers", "http://acs.amazonaws.com/groups/global/AllUsers"]
 TOO_PERMISSIVE_PERMISSIONS = ["WRITE", "WRITE_ACP", "FULL_CONTROL"]
