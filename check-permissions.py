@@ -9,11 +9,11 @@ KNOWN_GROUP_URIS = ["http://acs.amazonaws.com/groups/global/AuthenticatedUsers",
 TOO_PERMISSIVE_PERMISSIONS = ["WRITE", "WRITE_ACP", "FULL_CONTROL"]
 
 # Initialize a session using DigitalOcean Spaces.
-session = boto3.Session(
-    region_name="us-east-1",
-    aws_access_key_id="ACCESS_KEY",
-    aws_secret_access_key="SECRET_KEY"
-)
+#session = boto3.Session(
+#    region_name="us-east-1",
+#    aws_access_key_id="ACCESS_KEY",
+#    aws_secret_access_key="SECRET_KEY"
+#)
 
 def main():
     # Initialize an empty list to store any issues found
