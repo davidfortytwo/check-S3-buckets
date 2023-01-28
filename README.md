@@ -1,5 +1,7 @@
 # check-S3-buckets
 
+This is a collection of scripts, useful for pentesting and security checking AWS S3 Buckets.
+
 # Installation
 
 * Install all dependencies by running this command:
