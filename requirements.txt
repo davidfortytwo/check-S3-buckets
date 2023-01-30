@@ -3,7 +3,7 @@ boto3==1.16.44
 requests==2.25.1
 re2==0.2.24
 tqdm==4.54.0
-weasyprint==51
+weasyprint==57.2
 html3==1.18
 html2text==2021.1.16
 string==1.0
