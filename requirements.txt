@@ -6,4 +6,4 @@ tqdm==4.64.1
 weasyprint==57.2
 html3==1.18
 html2text==2020.1.16
-string==1.0
+strings==0.1.2
