@@ -5,5 +5,5 @@ re2==0.2.24
 tqdm==4.64.1
 weasyprint==57.2
 html3==1.18
-html2text==2021.1.16
+html2text==202.1.16
 string==1.0
