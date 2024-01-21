@@ -7,3 +7,4 @@ weasyprint==57.2
 html3==1.18
 html2text==2020.1.16
 strings==0.1.2
+pillow>=10.2.0 # not directly required, pinned by Snyk to avoid a vulnerability
