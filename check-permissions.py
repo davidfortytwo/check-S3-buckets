@@ -5,11 +5,40 @@ import html2text
 import pdfkit
 import argparse
 import logging
+from botocore.exceptions import BotoCoreError, ClientError
 
 KNOWN_GROUP_URIS = ["http://acs.amazonaws.com/groups/global/AuthenticatedUsers", "http://acs.amazonaws.com/groups/global/AllUsers"]
 TOO_PERMISSIVE_PERMISSIONS = ["WRITE", "WRITE_ACP", "FULL_CONTROL"]
 
 logging.basicConfig(filename='check_permissions.log', level=logging.DEBUG)
+
+
+NO_POLICY_CODES = {"NoSuchBucketPolicy", "NoSuchBucket", "NoSuchWebsiteConfiguration"}
+NO_LIFECYCLE_CODES = {"NoSuchLifecycleConfiguration", "NoSuchBucket"}
+
+
+def _error_code(exc):
+    """Return the AWS error code of a botocore ClientError, or ''."""
+    response = getattr(exc, "response", None) or {}
+    return (response.get("Error") or {}).get("Code", "")
+
+
+def record_unverified(unverified, requirement, bucket_name, exc):
+    """A check that could not be completed is NOT a clean result.
+
+    The previous bare `except:` clauses silently turned every failure --
+    AccessDenied, throttling, a malformed policy, a KeyError in the parsing
+    logic -- into the benign-looking message "does not have a policy", or into
+    nothing at all. The audit then reported a bucket as fine when it had in
+    fact never been checked.
+    """
+    detail = f"{type(exc).__name__}: {exc}"
+    msg = (f"[COULD NOT VERIFY] {requirement} - bucket {bucket_name} was not "
+           f"audited: {detail}")
+    unverified.append(msg)
+    logging.error(msg)
+    return msg
+
 
 # Initialize a session using DigitalOcean Spaces.
 #session = boto3.Session(
@@ -18,9 +47,10 @@ logging.basicConfig(filename='check_permissions.log', level=logging.DEBUG)
 #    aws_secret_access_key="SECRET_KEY"
 #)
 
-def main():
+def main(s3_client=None):
     # Initialize an empty list to store any issues found
     permission_issues = []
+    unverified = []  # checks that could not be completed
 
     # Parse command line arguments
     parser = argparse.ArgumentParser(description='Check S3 bucket policies and permissions')
@@ -34,7 +64,8 @@ def main():
     #    aws_secret_access_key="SECRET_KEY"
     #)
 
-    s3_client = session.client('s3',use_ssl=True)
+    if s3_client is None:
+        s3_client = boto3.session.client('s3', use_ssl=True)
 
     # ASVS Requirement 3.1.1: Verify that all S3 bucket policies are set to "Deny all" unless explicitly needed
     # Iterate through all S3 buckets and check the policy
@@ -48,9 +79,14 @@ def main():
                     if statement["Effect"] != "Deny":
                         permission_issues.append(f'Bucket {bucket_name} has a policy that allows access, expected "Deny"')
                         logging.info(f'Bucket {bucket_name} has a policy that allows access, expected "Deny"')
-        except:
-            permission_issues.append(f'Bucket {bucket_name} does not have a policy')
-            logging.error(f'Bucket {bucket_name} does not have a policy')
+        except ClientError as e:
+            if _error_code(e) in NO_POLICY_CODES:
+                permission_issues.append(f'Bucket {bucket_name} does not have a policy')
+                logging.error(f'Bucket {bucket_name} does not have a policy')
+            else:
+                record_unverified(unverified, 'ASVS 3.1.1 bucket policy is Deny-by-default', bucket_name, e)
+        except (BotoCoreError, ValueError, KeyError, TypeError, IndexError) as e:
+            record_unverified(unverified, 'ASVS 3.1.1 bucket policy is Deny-by-default', bucket_name, e)
 
     # ASVS Requirement 3.1.2: Verify that all S3 buckets have versioning enabled
     # Iterate through all S3 buckets and check if versioning is enabled
@@ -71,11 +107,11 @@ def main():
                 for obj in result['Contents']:
                     key = obj['Key']
                     acl = s3_client.get_object_acl(Bucket=bucket_name, Key=key)
-                        for grant in acl["Grants"]:
+                    for grant in acl["Grants"]:
                         # Check if the grantee is a known group or user
                         if "URI" in grant["Grantee"]:
                             if grant["Grantee"]["URI"] in KNOWN_GROUP_URIS:
-                                grantee = KNOWN_GROUP_URIS[grant["Grantee"]["URI"]]
+                                grantee = grant["Grantee"]["URI"]
                             else:
                                 grantee = grant["Grantee"]["URI"]
                         elif "EmailAddress" in grant["Grantee"]:
@@ -87,10 +123,10 @@ def main():
 
                         # Check if the grantee has too permissive permissions
                         if grant["Permission"] in TOO_PERMISSIVE_PERMISSIONS:
-                            permission_issues.write(f"Bucket: {bucket_name}\n")
-                            permission_issues.write(f"Grantee: {grantee}\n")
-                            permission_issues.write(f"Permission: {grant['Permission']}\n")
-                            permission_issues.write("\n")
+                            permission_issues.append(f"Bucket: {bucket_name}\n")
+                            permission_issues.append(f"Grantee: {grantee}\n")
+                            permission_issues.append(f"Permission: {grant['Permission']}\n")
+                            permission_issues.append("\n")
 
     # ASVS Requirement 3.1.4-1: Verify that all S3 bucket policies do not allow public write access
     for bucket in s3_client.list_buckets()['Buckets']:
@@ -104,9 +140,14 @@ def main():
                     if "s3:PutObject" in statement["Action"] or "s3:PutObjectAcl" in statement["Action"]:
                         permission_issues.append(f'Bucket {bucket_name} has a policy that allows public write access')
                         logging.info(f'Bucket {bucket_name} has a policy that allows public write access')
-        except:
-            permission_issues.append(f'Bucket {bucket_name} does not have a policy')
-            logging.info(f'Bucket {bucket_name} does not have a policy')
+        except ClientError as e:
+            if _error_code(e) in NO_POLICY_CODES:
+                permission_issues.append(f'Bucket {bucket_name} does not have a policy')
+                logging.info(f'Bucket {bucket_name} does not have a policy')
+            else:
+                record_unverified(unverified, 'ASVS 3.1.4-1 no public write access', bucket_name, e)
+        except (BotoCoreError, ValueError, KeyError, TypeError, IndexError) as e:
+            record_unverified(unverified, 'ASVS 3.1.4-1 no public write access', bucket_name, e)
 
     # ASVS Requirement 3.1.4-2: Verify that all S3 bucket policies include a condition to limit access to specific IAM users or roles
     for bucket in s3_client.list_buckets()['Buckets']:
@@ -129,9 +170,14 @@ def main():
                     else:
                         permission_issues.append(f'Bucket {bucket_name} has a policy that does not limit access to specific IAM users or roles')
                         logging.info(f'Bucket {bucket_name} has a policy that does not limit access to specific IAM users or roles')
-        except:
-            permission_issues.append(f'Bucket {bucket_name} does not have a policy')
-            logging.info(f'Bucket {bucket_name} does not have a policy')
+        except ClientError as e:
+            if _error_code(e) in NO_POLICY_CODES:
+                permission_issues.append(f'Bucket {bucket_name} does not have a policy')
+                logging.info(f'Bucket {bucket_name} does not have a policy')
+            else:
+                record_unverified(unverified, 'ASVS 3.1.4-2 policy restricted to specific IAM principals', bucket_name, e)
+        except (BotoCoreError, ValueError, KeyError, TypeError, IndexError) as e:
+            record_unverified(unverified, 'ASVS 3.1.4-2 policy restricted to specific IAM principals', bucket_name, e)
 
 
     # ASVS Requirement 3.1.5: Verify that all S3 bucket policies include a condition to limit access to specific IP ranges or VPCs
@@ -146,9 +192,14 @@ def main():
                     if "Condition" not in statement or ("IpAddress" not in statement["Condition"] and "ArnLike" not in statement["Condition"]):
                         permission_issues.append(f'Bucket {bucket_name} does not have a condition to limit access to specific IP ranges or VPCs')
                         logging.info(f'Bucket {bucket_name} does not have a condition to limit access to specific IP ranges or VPCs')
-        except:
-            permission_issues.append(f'Bucket {bucket_name} does not have a policy')
-            logging.info(f'Bucket {bucket_name} does not have a policy')
+        except ClientError as e:
+            if _error_code(e) in NO_POLICY_CODES:
+                permission_issues.append(f'Bucket {bucket_name} does not have a policy')
+                logging.info(f'Bucket {bucket_name} does not have a policy')
+            else:
+                record_unverified(unverified, 'ASVS 3.1.5 policy restricted to IP ranges or VPCs', bucket_name, e)
+        except (BotoCoreError, ValueError, KeyError, TypeError, IndexError) as e:
+            record_unverified(unverified, 'ASVS 3.1.5 policy restricted to IP ranges or VPCs', bucket_name, e)
 
     # ASVS Requirement 3.1.6: Verify that all S3 buckets have MFA delete enabled
     for bucket in s3_client.list_buckets()['Buckets']:
@@ -175,9 +226,14 @@ def main():
                         if transition_days < 30:
                             permission_issues.append(f'Bucket {bucket_name} has a lifecycle rule with transition days less than 30, expected at least 30 days')
                             logging.info(f'Bucket {bucket_name} has a lifecycle rule with transition days less than 30, expected at least 30 days')
-        except:
-            permission_issues.append(f'Bucket {bucket_name} does not have a lifecycle configuration')
-            logging.info(f'Bucket {bucket_name} does not have a lifecycle configuration')
+        except ClientError as e:
+            if _error_code(e) in NO_LIFECYCLE_CODES:
+                permission_issues.append(f'Bucket {bucket_name} does not have a lifecycle configuration')
+                logging.info(f'Bucket {bucket_name} does not have a lifecycle configuration')
+            else:
+                record_unverified(unverified, 'ASVS 3.1.7-1 lifecycle transitions to Glacier', bucket_name, e)
+        except (BotoCoreError, ValueError, KeyError, TypeError, IndexError) as e:
+            record_unverified(unverified, 'ASVS 3.1.7-1 lifecycle transitions to Glacier', bucket_name, e)
 
 
     # ASVS Requirement 3.1.7-2: Verify that all S3 buckets have an S3 bucket lifecycle policy in place to automatically delete old or infrequently accessed objects
@@ -188,9 +244,14 @@ def main():
             if "Rules" not in lifecycle_config or len(lifecycle_config["Rules"]) == 0:
                 permission_issues.append(f'Bucket {bucket_name} does not have a lifecycle policy')
                 logging.info(f'Bucket {bucket_name} does not have a lifecycle policy')
-        except:
-            permission_issues.append(f'Bucket {bucket_name} does not have a lifecycle policy')
-            logging.info(f'Bucket {bucket_name} does not have a lifecycle policy')
+        except ClientError as e:
+            if _error_code(e) in NO_LIFECYCLE_CODES:
+                permission_issues.append(f'Bucket {bucket_name} does not have a lifecycle policy')
+                logging.info(f'Bucket {bucket_name} does not have a lifecycle policy')
+            else:
+                record_unverified(unverified, 'ASVS 3.1.7-2 lifecycle deletes old objects', bucket_name, e)
+        except (BotoCoreError, ValueError, KeyError, TypeError, IndexError) as e:
+            record_unverified(unverified, 'ASVS 3.1.7-2 lifecycle deletes old objects', bucket_name, e)
 
     # ASVS Requirement 3.1.7-3: Verify that all S3 bucket policies include a condition to limit access to specific request headers
     for bucket in s3_client.list_buckets()['Buckets']:
@@ -216,9 +277,14 @@ def main():
                     else:
                         permission_issues.append(f'Bucket {bucket_name} does not have a condition element in policy statement')
                         logging.info(f'Bucket {bucket_name} does not have a condition element in policy statement')
-        except:
-            permission_issues.append(f'Bucket {bucket_name} does not have a policy')
-            logging.info(f'Bucket {bucket_name} does not have a policy')
+        except ClientError as e:
+            if _error_code(e) in NO_POLICY_CODES:
+                permission_issues.append(f'Bucket {bucket_name} does not have a policy')
+                logging.info(f'Bucket {bucket_name} does not have a policy')
+            else:
+                record_unverified(unverified, 'ASVS 3.1.7-3 policy restricted by referer/user-agent', bucket_name, e)
+        except (BotoCoreError, ValueError, KeyError, TypeError, IndexError) as e:
+            record_unverified(unverified, 'ASVS 3.1.7-3 policy restricted by referer/user-agent', bucket_name, e)
 
 
     # ASVS Requirement 3.1.7-4: Verify that all S3 bucket policies include a condition to limit access based on the presence of specific authentication headers.
@@ -235,9 +301,14 @@ def main():
                             if "aws:SecureTransport" not in statement["Condition"]["StringLike"]:
                                 permission_issues.append(f'Bucket {bucket_name} does not limit access based on the presence of specific authentication headers')
                                 logging.info(f'Bucket {bucket_name} does not limit access based on the presence of specific authentication headers')
-        except:
-            permission_issues.append(f'Bucket {bucket_name} does not have a policy')
-            logging.info(f'Bucket {bucket_name} does not have a policy')
+        except ClientError as e:
+            if _error_code(e) in NO_POLICY_CODES:
+                permission_issues.append(f'Bucket {bucket_name} does not have a policy')
+                logging.info(f'Bucket {bucket_name} does not have a policy')
+            else:
+                record_unverified(unverified, 'ASVS 3.1.7-4 policy requires secure transport', bucket_name, e)
+        except (BotoCoreError, ValueError, KeyError, TypeError, IndexError) as e:
+            record_unverified(unverified, 'ASVS 3.1.7-4 policy requires secure transport', bucket_name, e)
 
 
     # ASVS Requirement 3.1.8: Verify that all S3 bucket encryption is enabled
@@ -299,9 +370,18 @@ def main():
         for issue in permission_issues:
             print(issue)
             logging.info(issue)
-    else:
+
+    if unverified:
+        print(f"\n!!! {len(unverified)} check(s) COULD NOT BE COMPLETED. The buckets below were NOT audited; treat them as unknown, not as compliant. !!!")
+        for item in unverified:
+            print(item)
+            logging.info(item)
+
+    if not permission_issues and not unverified:
         print("No permission issues found.")
         logging.info("No permission issues found.")
+    elif not permission_issues:
+        print("No permission issues found in the checks that completed, but the audit is INCOMPLETE (see the 'could not verify' list above).")
 
 
     if args.output:
